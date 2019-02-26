@@ -27,6 +27,7 @@ func main() {
 		ZoneNameOrId:  common.String(zn),
 		Domain:        common.String(dn),
 		CompartmentId: common.String(compartmentid),
+		Rtype:         common.String("TXT"),
 	}
 
 	// Domainに設定されているすべてのレコードを取得
@@ -34,6 +35,11 @@ func main() {
 	domainRecords, err := client.GetDomainRecords(ctx, getRequest)
 	if err != nil {
 		panic(err)
+	}
+
+	if *domainRecords.OpcTotalItems == 0 {
+		fmt.Println("no records")
+		return
 	}
 
 	var deletehash *string
@@ -44,7 +50,13 @@ func main() {
 
 		if *record.Rdata == "\"deleteme\"" {
 			deletehash = record.RecordHash
+			break
 		}
+	}
+
+	if deletehash == nil {
+		fmt.Println("no records")
+		return
 	}
 
 	// 一部のレコードを削除。rdataの中身がdeletemeのものを削除
