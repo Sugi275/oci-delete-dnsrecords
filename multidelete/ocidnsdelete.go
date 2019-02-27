@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Sugi275/oci-env-configprovider/envprovider"
 	"github.com/oracle/oci-go-sdk/common"
@@ -77,10 +78,36 @@ func main() {
 		CompartmentId: common.String(compartmentid),
 	}
 
-	response, err := client.PatchDomainRecords(context.Background(), patchRequest)
+	response, err := client.PatchDomainRecords(ctx, patchRequest)
 	if err != nil {
 		panic(err)
 	}
 
+	// 削除されたことを確認。PatchDomainRecordsは非同期に削除されるため
+	for yes := true; yes; {
+		yes, err = existRecord(ctx, client, getRequest, *deletehash)
+
+		if err != nil {
+			panic(err)
+		}
+
+		time.Sleep(3 * time.Second)
+	}
+
 	fmt.Println(response)
+}
+
+func existRecord(ctx context.Context, client dns.DnsClient, getRequest dns.GetDomainRecordsRequest, recordHash string) (bool, error) {
+	domainRecords, err := client.GetDomainRecords(ctx, getRequest)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, record := range domainRecords.RecordCollection.Items {
+		if *record.RecordHash == recordHash {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
